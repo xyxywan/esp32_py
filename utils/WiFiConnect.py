@@ -26,6 +26,11 @@ class WiFiConnector:
                 return True
         return False
 
+    def get_config(self):
+        # IP地址、子网掩码、网关和DNS服务器的元组
+        ip, mask, gateway, dns = self.wlan.ifconfig()
+        return ip, mask, gateway, dns
+
 
 if __name__ == '__main__':
     wifi_ssid = "gongguisong"
@@ -46,4 +51,3 @@ if __name__ == '__main__':
 
     print("connected")
     lighter.close()
-
