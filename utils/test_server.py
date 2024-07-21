@@ -19,10 +19,6 @@ class HTTPServer:
             print(f"client_address={client_address}")
             request = client_socket.recv(1024).decode('utf-8')
 
-            # content_length = int([h.split(': ')[1] for h in headers if 'Content-Length' in h][0])
-            # body = client_socket.recv(content_length).decode('utf-8')
-            # print(f"body={body}")
-
             response = self.handle_request2(request)
             client_socket.sendall(response.encode('utf-8'))
             client_socket.close()
@@ -47,27 +43,31 @@ class HTTPServer:
         header_lines = headers.split('\r\n')
         method, path, _ = header_lines[0].split(' ')
 
-        # 解析 URL 和查询参数
-        # url = urlparse(path)
-        # query_params = parse_qs(url.query)
-        print(f"path={path}")
-
         # 解析 POST 数据
         if method == 'POST':
+            url_path = path
             content_length = int([line.split(': ')[1] for line in header_lines if 'Content-Length' in line][0])
-            post_params = body[:content_length]
+            payload = eval(body[:content_length])  # todo:unsafe
         else:
-            post_params = {}
+            payload = {}
+            url_path = path
+            if "?" in path:
+                ret = path.split("?")
+                url_path = ret[0]
+                content = ret[1].split('&')
+                for pair in content:
+                    key, value = pair.split('=')
+                    payload[key] = value
 
         # 打印解析后的参数
         print(f"Method: {method}")
-        print(f"Path: {path}")
-        print(f"Post Params: {post_params}")
+        print(f"url_path: {url_path}")
+        print(f"payload: {payload}")
 
         # 根据路由返回不同的响应
-        if path == '/':
+        if url_path == '/':
             response_body = "Hello, World!"
-        elif path == '/test':
+        elif url_path == '/test':
             response_body = "This is a test route."
         else:
             response_body = "404 Not Found"
