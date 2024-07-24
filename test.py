@@ -77,7 +77,7 @@ class HTTPServer:
     def __init__(self, host, port):
         self.server_socket = None
         self.max_connection = 5  # 最大连接数
-        self.max_run_time = 6
+        self.max_run_time = 15
         self.host=host
         self.port = port
 
@@ -101,7 +101,7 @@ class HTTPServer:
 
             self.max_run_time -= 1
             if self.max_run_time < 0:
-                sys.exit(1)
+                machine.reset()
             _thread.start_new_thread(self.handle_request, (client_socket, client_address))
 
     def handle_request(self, client_socket, client_address):
@@ -165,13 +165,12 @@ class APManager:
     def __init__(self, name='ESP32_AP', password="123456789"):
         self.essid = name
         self.password = password
-
-    def enable(self):
         self.ap = network.WLAN(network.AP_IF)
         self.ap.active(True)
         self.ap.config(authmode=network.AUTH_WPA_WPA2_PSK, essid=self.essid, password=self.password)
 
-        # self.ap.config(essid=self.essid, password=self.password, authmode=network.AUTH_WPA_WPA2_PSK)
+    def close(self):
+        self.ap.active(False)
 
 lighter = Lighter()
 wifi = WiFiManager()
@@ -183,14 +182,98 @@ server = HTTPServer('0.0.0.0', 8080)
 
 lighter.blink(0.3)
 ap = APManager()
-ap.enable()
 
 
-def get_wifi_list(req):
-    return wifi_list
-print(get_wifi_list(None))
+wifi_names = [item[0].decode('utf-8') for item in wifi_list]
+#ap.ap.ifconfig()[0]
+html_tamplate = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Submission</title>
+</head>
+<body>
+wifi list =  
+<div id="array-container"></div>
 
-server.add_route(path="/wifi", callback_func=get_wifi_list, method="POST")
+    <form id="myForm">
+        <label for="input1">Input 1:</label>
+        <input type="text" id="input1" name="input1"><br><br>
+        <label for="input2">Input 2:</label>
+        <input type="text" id="input2" name="input2"><br><br>
+        <button type="button" onclick="submitForm()">Submit</button>
+    </form>
+
+    <script>
+        function submitForm() {
+            const input1 = document.getElementById('input1').value;
+            const input2 = document.getElementById('input2').value;
+
+            const data = {
+                ssid: input1,
+                passwd: input2
+            };
+
+            fetch('login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+        const myArray = """+ str(wifi_names) +""";
+
+        // 获取容器元素
+        const container = document.getElementById("array-container");
+
+        // 遍历数组并创建换行元素
+        myArray.forEach(item => {
+            const p = document.createElement("p");
+            p.textContent = item;
+            container.appendChild(p);
+        });
+    </script>
+</body>
+</html>
+"""
+def choose_wifi(req):
+    return html_tamplate
+
+def login_func(req):
+    global ap
+    ssid = req.get("ssid")
+    passwd = req.get("passwd")
+    print(f'ssid={req.get("ssid")}，passwd={req.get("passwd")}')
+    try:
+        ap.close()
+        lighter.blink(0.3)
+        wifi = WiFiManager()
+        if not wifi.connect_wifi(wifi_ssid=ssid, wifi_pwd=passwd):
+            wifi.close()
+            ap = APManager()
+            print("connect wifi faild")
+            lighter.off()
+        else:
+            lighter.on()
+
+    except:
+        pass
+
+    return f'ssid={req.get("ssid")}，passwd={req.get("passwd")}'
+
+
+server.add_route(path="/wifi", callback_func=choose_wifi, method="POST", type="html")
+server.add_route(path="/login", callback_func=login_func, method="POST", type="html")
 lighter.on()
-#_thread.start_new_thread(server.start, ())
-server.start()
+_thread.start_new_thread(server.start, ())
+# server.start()
