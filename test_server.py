@@ -1,17 +1,15 @@
 import _thread
 import socket
-import machine
+
 import json
 import sys
 
 
 class HTTPServer:
-    def __init__(self, host, port):
+    def __init__(self):
         self.server_socket = None
         self.max_connection = 5  # 最大连接数
         self.max_run_time = 6
-        self.host=host
-        self.port = port
 
         self.route_map = {
             "/": {"func": lambda x: "root_path", "method": "POST"},
@@ -19,14 +17,14 @@ class HTTPServer:
         }
         # self.start(host, port)
 
-    def start(self):
+    def start(self, host, port):
         try:
             self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.server_socket.bind((self.host, self.port))
+            self.server_socket.bind((host, port))
             self.server_socket.listen(self.max_connection)
         except:
             print("bind error")
-            machine.reset()
+            sys.exit(1)
 
         while True:
             client_socket, client_address = self.server_socket.accept()
@@ -67,27 +65,20 @@ class HTTPServer:
             # 根据路由返回不同的响应
             resp_route = self.route_map.get(url_path)
             if resp_route:
-                ret = resp_route["func"](payload)
-                response =self.__handle_result(data=ret, type=resp_route["type"])
+                response_body = resp_route["func"](payload)
             else:
-                response = self.__handle_result(data="404 Not Found", type="")
+                response_body = "404 Not Found"
         except:
-            response = self.__handle_result(data="server internel error", type="")
+            response_body = "server internel error"
+        response = f"HTTP/1.1 200 OK\r\nContent-Length: {len(response_body)}\r\n\r\n{response_body}"
 
         client_socket.sendall(response.encode('utf-8'))
         client_socket.close()
         print("req done -----")
 
-    def add_route(self, path, callback_func, method, type="json"):
-        self.route_map.update({path: {"func": callback_func, "method": method, "type": type}})
+    def add_route(self, path, callback_func, method):
+        self.route_map.update({path: {"func": callback_func, "method": method}})
 
-    def __handle_result(self, data, type="json"):
-        if type == "json":
-            response_json = json.dumps(data)
-            http_response = f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{response_json}"
-        elif type == "html":
-            http_response = f"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n{data}"
-        else:
-            http_response = f"HTTP/1.1 200 OK\r\nContent-Length: {len(str(data))}\r\n\r\n{data}"
-        return http_response
 
+if __name__ == '__main__':
+    server = HTTPServer()

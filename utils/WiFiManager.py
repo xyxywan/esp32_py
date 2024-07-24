@@ -1,12 +1,17 @@
 import network
 import time
-from Light import Lighter
 
 
-class WiFiConnector:
+class WiFiManager:
     def __init__(self):
-        self.wlan = network.WLAN(network.STA_IF)
-        self.wlan.active(True)
+        try:
+            self.wlan = network.WLAN(network.STA_IF)
+            self.wlan.active(True)
+        except:
+            print("err wifi")
+
+    def close(self):
+        self.wlan.active(False)
 
     def connect_wifi(self, wifi_ssid, wifi_pwd):
         self.wlan.disconnect()
@@ -31,23 +36,5 @@ class WiFiConnector:
         ip, mask, gateway, dns = self.wlan.ifconfig()
         return ip, mask, gateway, dns
 
-
-if __name__ == '__main__':
-    wifi_ssid = "gongguisong"
-    wifi_pwd = "gongguisong"
-
-    wifi = WiFiConnector()
-    lighter = Lighter()
-
-    lighter.blink(0.3)
-    print("searching...")
-    while not wifi.check_wifi_exist(wifi_ssid):
-        time.sleep(1)
-        print(f"WIFI:[{wifi_ssid}]not found")
-
-    print("connecting...")
-    lighter.blink(1)
-    wifi.connect_wifi(wifi_ssid, wifi_pwd)
-
-    print("connected")
-    lighter.close()
+    def scan(self):
+        return self.wlan.scan()

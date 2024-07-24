@@ -7,7 +7,7 @@ import time
 
 from utils.HTTPServer import HTTPServer
 from utils.Light import Lighter
-from utils.WiFiConnect import WiFiConnector
+from utils.WiFiManager import WiFiConnector
 
 wifi_ssid = "gongguisong"
 wifi_pwd = "gongguisong"
@@ -27,5 +27,8 @@ wifi.connect_wifi(wifi_ssid, wifi_pwd)
 ip, mask, gateway, dns = wifi.get_config()
 print(ip)
 print("connected")
-lighter.close()
-server = HTTPServer(host=ip, port=80)
+lighter.off()
+
+server = HTTPServer()
+server.add_route(path="/ttt", callback_func=lambda x: "Hello, World!", method="POST")
+server.start(host='127.0.0.1', port=80)
